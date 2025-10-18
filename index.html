@@ -3,17 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALL IN ONE - OCR Scanner</title>
+    <title>ALL IN ONE - OCR Scanner | Extract Text from Images, PDFs & DOCX</title>
+    <meta name="description" content="ALL IN ONE OCR Scanner - Extract text from images, PDFs, and DOCX files easily using advanced OCR technology.">
+    <meta name="keywords" content="OCR Scanner, PDF Text Extractor, Image to Text, DOCX Text Extraction, Tesseract OCR">
+    <meta name="author" content="ALL IN ONE OCR">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#1a1a1a">
+
+    <!-- Open Graph for social sharing -->
+    <meta property="og:title" content="ALL IN ONE - OCR Scanner">
+    <meta property="og:description" content="Extract text from images, PDFs, and DOCX files easily.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://yourdomain.com/images/og-image.png">
+    <meta property="og:url" content="https://yourdomain.com">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ALL IN ONE - OCR Scanner">
+    <meta name="twitter:description" content="Extract text from images, PDFs, and DOCX files easily.">
+    <meta name="twitter:image" content="https://yourdomain.com/images/og-image.png">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>" type="image/svg+xml">
+
+    <!-- Fonts and Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Arimo:wght@400;500&display=swap" rel="stylesheet">
-    
+
     <!-- OCR Libraries - Using PDF.js v2.x for global pdfjsLib support -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.3/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ALL IN ONE OCR Scanner",
+        "description": "Extract text from images, PDFs, and DOCX files using advanced OCR technology",
+        "url": "https://yourdomain.com",
+        "applicationCategory": "UtilityApplication",
+        "operatingSystem": "Any",
+        "permissions": "browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
     
     <style>
-        /* Your existing CSS styles remain exactly the same */
         :root {
             --background: 220 15% 10%;
             --foreground: 230 35% 98%;
@@ -246,52 +287,6 @@
         .browse-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .support-info {
-            margin-top: 1.5rem;
-            padding: 1.25rem;
-            background-color: hsl(var(--secondary) / 0.3);
-            border-radius: 0.75rem;
-            width: 100%;
-        }
-
-        .support-info p {
-            font-size: 1rem;
-            color: hsl(var(--muted-foreground));
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        .file-types {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1.5rem;
-            margin-top: 0.75rem;
-        }
-
-        .file-type {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .file-type i {
-            font-size: 1.125rem;
-        }
-
-        .images-type i {
-            color: hsl(var(--primary));
-        }
-
-        .documents-type i {
-            color: hsl(var(--accent));
-        }
-
-        .file-type span {
-            font-size: 0.875rem;
-            font-weight: 500;
         }
 
         .preview-container {
@@ -613,6 +608,77 @@
         .toast.error {
             background-color: hsl(var(--destructive));
         }
+
+        /* Mobile-first: small devices */
+        @media (max-width: 768px) {
+            .header-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .subtitle-container {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: left;
+            }
+
+            .vision-snap-btn {
+                align-self: flex-start;
+            }
+
+            .upload-zone {
+                padding: 2rem;
+            }
+
+            .upload-text h3 {
+                font-size: 1.5rem;
+            }
+
+            .upload-text p {
+                font-size: 1rem;
+            }
+
+            .browse-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .preview-container {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+
+        /* Medium devices */
+        @media (min-width: 768px) {
+            .subtitle-container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .browse-btn {
+                width: auto;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border: 220 15% 80%;
+                --muted-foreground: 230 35% 95%;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -625,8 +691,8 @@
                         <h1 class="title">ALL IN ONE</h1>
                         <div class="subtitle-container">
                             <p class="subtitle">One Intelligent Platform to Recognize Anything</p>
-                            <button class="vision-snap-btn" id="visionSnapBtn">
-                                <img src="./images/Vision Snap logo.png" alt="Vision Snap">
+                            <button class="vision-snap-btn" id="visionSnapBtn" aria-label="Open Vision Snap">
+                                <img src="./images/Vision Snap logo.png" alt="Vision Snap Logo - Open external OCR tool">
                             </button>
                         </div>
                     </div>
@@ -636,14 +702,17 @@
             <main>
                 <div class="main-content">
                     <!-- Upload Zone -->
-                    <div class="upload-zone" id="uploadZone">
-                        <input type="file" id="fileInput" class="upload-input" accept="image/*,.pdf,.doc,.docx,.txt">
+                    <div class="upload-zone" id="uploadZone" role="region" aria-label="File Upload Area">
+                        <input type="file" id="fileInput" class="upload-input" accept="image/*,.pdf,.doc,.docx,.txt" aria-label="Select file to upload">
                         <div class="upload-content">
                             <div class="upload-icon-container">
-                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <div class="upload-icon-glow"></div>
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                                </div>
                             </div>
                             <div class="upload-text">
-                                <h3>Drop your file here</h3>
+                                <h2>Drop your file here</h2>
                                 <p>or click to browse</p>
                             </div>
                             <button class="browse-btn">Browse Files</button>
@@ -652,33 +721,33 @@
 
                     <!-- Preview Section (Initially Hidden) -->
                     <div class="preview-container" id="previewContainer" style="display: none;">
-                        <div class="preview-section">
+                        <section class="preview-section" aria-labelledby="preview-title">
                             <div class="preview-header">
-                                <h2 class="preview-title">File Preview</h2>
-                                <button class="new-upload-btn" id="newUploadBtn">Upload New File</button>
+                                <h2 class="preview-title" id="preview-title">File Preview</h2>
+                                <button class="new-upload-btn" id="newUploadBtn" aria-label="Upload a new file">Upload New File</button>
                             </div>
                             <div class="image-preview" id="imagePreview">
                                 <!-- Preview content will be inserted here -->
                             </div>
-                        </div>
+                        </section>
 
-                        <div class="preview-section">
+                        <section class="preview-section" aria-labelledby="results-title">
                             <!-- Processing State -->
-                            <div class="processing-state" id="processingState" style="display: none;">
+                            <div class="processing-state" id="processingState" style="display: none;" role="status" aria-live="polite" aria-label="Processing file">
                                 <div class="processing-icon-container">
                                     <div class="processing-icon-glow"></div>
                                     <div class="processing-icon">
-                                        <i class="fas fa-scanner"></i>
+                                        <i class="fas fa-scanner" aria-hidden="true"></i>
                                     </div>
                                 </div>
                                 <div class="processing-text">
                                     <div class="processing-title">
-                                        <i class="fas fa-spinner processing-spinner"></i>
+                                        <i class="fas fa-spinner processing-spinner" aria-hidden="true"></i>
                                         <span>Processing file...</span>
                                     </div>
                                     <p class="processing-description">Extracting text with OCR technology</p>
                                     <div class="progress-bar">
-                                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                                        <div class="progress-fill" id="progressFill" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
                                     <p class="progress-text" id="progressText">0%</p>
                                 </div>
@@ -687,23 +756,23 @@
                             <!-- Result Display -->
                             <div class="result-display" id="resultDisplay" style="display: none;">
                                 <div class="result-header">
-                                    <h3 class="result-title">Extracted Text</h3>
+                                    <h3 class="result-title" id="results-title">Extracted Text</h3>
                                     <div class="result-actions">
-                                        <button class="action-btn" id="copyBtn">
-                                            <i class="fas fa-copy"></i>
+                                        <button class="action-btn" id="copyBtn" aria-label="Copy extracted text to clipboard">
+                                            <i class="fas fa-copy" aria-hidden="true"></i>
                                             Copy
                                         </button>
-                                        <button class="action-btn" id="downloadBtn">
-                                            <i class="fas fa-download"></i>
+                                        <button class="action-btn" id="downloadBtn" aria-label="Download extracted text as file">
+                                            <i class="fas fa-download" aria-hidden="true"></i>
                                             Download
                                         </button>
                                     </div>
                                 </div>
                                 <div class="result-content">
-                                    <pre class="result-text" id="resultText">No text detected in the file.</pre>
+                                    <pre class="result-text" id="resultText" aria-live="polite">No text detected in the file.</pre>
                                 </div>
                             </div>
-                        </div>
+                        </section>
                     </div>
                 </div>
             </main>
@@ -711,7 +780,7 @@
     </div>
 
     <!-- Toast Notification -->
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
     <script>
         // DOM Elements
@@ -770,6 +839,7 @@
             processingState.style.display = 'flex';
             resultDisplay.style.display = 'none';
             progressFill.style.width = '0%';
+            progressFill.setAttribute('aria-valuenow', '0');
             progressText.textContent = '0%';
 
             const fileType = file.type;
@@ -842,13 +912,13 @@
             const reader = new FileReader();
             reader.onload = async (e) => {
                 imagePreview.innerHTML = `
-                    <img src="${e.target.result}" alt="Preview" class="preview-image">
+                    <img src="${e.target.result}" alt="Preview of uploaded image for OCR processing" class="preview-image">
                     <div class="file-badge image-badge">
-                        <i class="fas fa-image"></i>
+                        <i class="fas fa-image" aria-hidden="true"></i>
                         <span>Image</span>
                     </div>
-                    <button class="remove-btn" id="removeBtn">
-                        <i class="fas fa-times"></i>
+                    <button class="remove-btn" id="removeBtn" aria-label="Remove file and reset application">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 `;
                 document.getElementById('removeBtn').addEventListener('click', resetApp);
@@ -872,8 +942,10 @@
                         const { data: { text } } = await Tesseract.recognize(finalCanvas, 'eng', {
                             logger: m => {
                                 if (m.status === 'recognizing text') {
-                                    progressFill.style.width = `${Math.round(m.progress * 100)}%`;
-                                    progressText.textContent = `${Math.round(m.progress * 100)}%`;
+                                    const progress = Math.round(m.progress * 100);
+                                    progressFill.style.width = `${progress}%`;
+                                    progressFill.setAttribute('aria-valuenow', progress);
+                                    progressText.textContent = `${progress}%`;
                                 }
                             },
                             // Better OCR configuration
@@ -906,18 +978,18 @@
                     // Show preview immediately
                     imagePreview.innerHTML = `
                         <div class="pdf-preview">
-                            <i class="fas fa-file-pdf"></i>
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i>
                             <div class="pdf-info">
                                 <div class="pdf-name">${file.name}</div>
                                 <div class="pdf-details">PDF Document • ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
                             </div>
                         </div>
                         <div class="file-badge pdf-badge">
-                            <i class="fas fa-file-alt"></i>
+                            <i class="fas fa-file-alt" aria-hidden="true"></i>
                             <span>PDF</span>
                         </div>
-                        <button class="remove-btn" id="removeBtn">
-                            <i class="fas fa-times"></i>
+                        <button class="remove-btn" id="removeBtn" aria-label="Remove file and reset application">
+                            <i class="fas fa-times" aria-hidden="true"></i>
                         </button>
                     `;
                     document.getElementById('removeBtn').addEventListener('click', resetApp);
@@ -939,8 +1011,10 @@
                             const pageText = strings.join(' ').trim();
                             directText += pageText + '\n\n';
 
-                            progressFill.style.width = `${Math.round((pageNum / totalPages) * 50)}%`;
-                            progressText.textContent = `${Math.round((pageNum / totalPages) * 50)}%`;
+                            const progress = Math.round((pageNum / totalPages) * 50);
+                            progressFill.style.width = `${progress}%`;
+                            progressFill.setAttribute('aria-valuenow', progress);
+                            progressText.textContent = `${progress}%`;
                         } catch (err) {
                             console.warn(`Failed to extract text from page ${pageNum}:`, err);
                         }
@@ -991,6 +1065,7 @@
                                     if (m.status === 'recognizing text') {
                                         const progress = 50 + Math.round(((pageNum - 1 + m.progress) / totalPages) * 50);
                                         progressFill.style.width = `${progress}%`;
+                                        progressFill.setAttribute('aria-valuenow', progress);
                                         progressText.textContent = `${progress}%`;
                                     }
                                 },
@@ -1025,18 +1100,18 @@
             reader.onload = (e) => {
                 imagePreview.innerHTML = `
                     <div class="pdf-preview">
-                        <i class="fas fa-file-alt"></i>
+                        <i class="fas fa-file-alt" aria-hidden="true"></i>
                         <div class="pdf-info">
                             <div class="pdf-name">${file.name}</div>
                             <div class="pdf-details">Text Document • ${(file.size / 1024).toFixed(2)} KB</div>
                         </div>
                     </div>
                     <div class="file-badge pdf-badge">
-                        <i class="fas fa-file-alt"></i>
+                        <i class="fas fa-file-alt" aria-hidden="true"></i>
                         <span>TXT</span>
                     </div>
-                    <button class="remove-btn" id="removeBtn">
-                        <i class="fas fa-times"></i>
+                    <button class="remove-btn" id="removeBtn" aria-label="Remove file and reset application">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 `;
                 document.getElementById('removeBtn').addEventListener('click', resetApp);
@@ -1056,18 +1131,18 @@
 
                 imagePreview.innerHTML = `
                     <div class="pdf-preview">
-                        <i class="fas fa-file-word"></i>
+                        <i class="fas fa-file-word" aria-hidden="true"></i>
                         <div class="pdf-info">
                             <div class="pdf-name">${file.name}</div>
                             <div class="pdf-details">DOCX Document • ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
                         </div>
                     </div>
                     <div class="file-badge pdf-badge">
-                        <i class="fas fa-file-alt"></i>
+                        <i class="fas fa-file-alt" aria-hidden="true"></i>
                         <span>DOCX</span>
                     </div>
-                    <button class="remove-btn" id="removeBtn">
-                        <i class="fas fa-times"></i>
+                    <button class="remove-btn" id="removeBtn" aria-label="Remove file and reset application">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 `;
                 document.getElementById('removeBtn').addEventListener('click', resetApp);
@@ -1092,6 +1167,7 @@
             processingState.style.display = 'none';
             resultDisplay.style.display = 'none';
             progressFill.style.width = '0%';
+            progressFill.setAttribute('aria-valuenow', '0');
             progressText.textContent = '0%';
         }
 
@@ -1126,6 +1202,21 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+
+        // Keyboard navigation improvements
+        document.addEventListener('keydown', (e) => {
+            // Close preview with Escape key
+            if (e.key === 'Escape' && previewContainer.style.display === 'grid') {
+                resetApp();
+            }
+            
+            // Focus management for accessibility
+            if (e.key === 'Tab' && !e.shiftKey && document.activeElement === downloadBtn) {
+                // Loop focus back to the beginning
+                fileInput.focus();
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>
