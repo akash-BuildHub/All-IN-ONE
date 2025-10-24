@@ -1,7 +1,9 @@
 // DOM Elements
 const elements = {
     uploadZone: document.getElementById('uploadZone'),
+    audioUploadZone: document.getElementById('audioUploadZone'),
     fileInput: document.getElementById('fileInput'),
+    audioFileInput: document.getElementById('audioFileInput'),
     visionSnapBtn: document.getElementById('visionSnapBtn'),
     previewContainer: document.getElementById('previewContainer'),
     imagePreview: document.getElementById('imagePreview'),
@@ -31,7 +33,9 @@ elements.visionSnapBtn.addEventListener('click', () => {
 });
 
 elements.fileInput.addEventListener('change', handleFileSelect);
+elements.audioFileInput.addEventListener('change', handleAudioFileSelect);
 
+// Document/Image upload zone events
 elements.uploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     elements.uploadZone.style.borderColor = 'hsl(var(--primary))';
@@ -46,6 +50,24 @@ elements.uploadZone.addEventListener('drop', (e) => {
     elements.uploadZone.style.borderColor = 'hsl(var(--border) / 0.6)';
     if (e.dataTransfer.files.length) {
         handleFileSelect({ target: { files: e.dataTransfer.files } });
+    }
+});
+
+// Audio upload zone events
+elements.audioUploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    elements.audioUploadZone.style.borderColor = 'hsl(var(--primary))';
+});
+
+elements.audioUploadZone.addEventListener('dragleave', () => {
+    elements.audioUploadZone.style.borderColor = 'hsl(var(--border) / 0.6)';
+});
+
+elements.audioUploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    elements.audioUploadZone.style.borderColor = 'hsl(var(--border) / 0.6)';
+    if (e.dataTransfer.files.length) {
+        handleAudioFileSelect({ target: { files: e.dataTransfer.files } });
     }
 });
 
@@ -82,6 +104,36 @@ async function handleFileSelect(e) {
         elements.processingState.style.display = 'none';
         showToast('Unsupported file type', 'error');
     }
+}
+
+// Audio file handler
+async function handleAudioFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    resetUI();
+
+    const fileType = file.type;
+
+    if (fileType.startsWith('audio/')) {
+        await handleAudioFile(file);
+    } else {
+        showToast('Unsupported audio file type', 'error');
+    }
+}
+
+// Audio Processing Function
+async function handleAudioFile(file) {
+    showAudioPreview(file);
+    
+    // Show processing state for audio
+    elements.processingState.style.display = 'flex';
+    
+    // Simulate audio processing (replace with actual audio processing logic)
+    setTimeout(() => {
+        elements.processingState.style.display = 'none';
+        showResult('Audio processing would be implemented here. Currently supports file upload only.', 'Audio file uploaded successfully!');
+    }, 2000);
 }
 
 // Image Processing Functions
@@ -420,6 +472,23 @@ function showImagePreview(src, fileType, iconClass) {
          </div>`;
 }
 
+function showAudioPreview(file) {
+    elements.imagePreview.innerHTML = 
+        `<div class="pdf-preview">
+            <i class="fas fa-music"></i>
+            <div>
+                <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">${file.name}</div>
+                <div style="color: hsl(var(--muted-foreground));">
+                    Audio File • ${(file.size / 1024 / 1024).toFixed(2)} MB
+                </div>
+            </div>
+        </div>
+        <div class="file-badge">
+            <i class="fas fa-music"></i>
+            <span>Audio</span>
+        </div>`;
+}
+
 function showPDFPreview(file, fileType = 'PDF', iconClass = 'fas fa-file-pdf') {
     elements.imagePreview.innerHTML = 
         `<div class="pdf-preview">
@@ -506,6 +575,7 @@ function resetUI() {
 
 function resetApp() {
     elements.fileInput.value = '';
+    elements.audioFileInput.value = '';
     elements.previewContainer.style.display = 'none';
     elements.processingState.style.display = 'none';
     elements.resultDisplay.style.display = 'none';

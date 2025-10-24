@@ -96,31 +96,45 @@ main {
 }
 
 .main-content {
-    max-width: 48rem;
+    max-width: 80rem;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 2rem;
 }
 
+.upload-zones-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    width: 100%;
+    max-width: 700px;
+    margin: 2rem auto;
+}
+
+@media (min-width: 768px) {
+    .upload-zones-container {
+        grid-template-columns: 1fr 1fr;
+        max-width: 900px;
+    }
+}
+
 .upload-zone {
     border: 3px dashed hsl(var(--border) / 0.6);
     border-radius: 1.25rem;
-    padding: 3.5rem;
+    padding: 2.5rem;
     transition: all 0.3s ease;
     background-color: hsl(var(--card) / 0.6);
     backdrop-filter: blur(10px);
     cursor: pointer;
     position: relative;
-    width: 100%;
-    max-width: 700px;
-    margin: 2rem auto;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 1.25rem;
     text-align: center;
+    min-height: 280px;
 }
 
 .upload-zone:hover {
@@ -143,27 +157,31 @@ main {
     align-items: center;
     justify-content: center;
     gap: 1.25rem;
+    width: 100%;
 }
 
 .upload-icon {
     background-color: hsl(var(--primary) / 0.1);
-    padding: 1.5rem;
+    padding: 1.25rem;
     border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .upload-icon i {
-    font-size: 3rem;
+    font-size: 2.5rem;
     color: hsl(var(--primary));
 }
 
 .upload-text h3 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
 }
 
 .upload-text p {
-    font-size: 1.125rem;
+    font-size: 1rem;
     color: hsl(var(--muted-foreground));
 }
 
@@ -182,6 +200,12 @@ main {
 .browse-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.file-support-text {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.5rem;
 }
 
 .preview-container {
@@ -508,5 +532,8 @@ main {
     }
     .title {
         font-size: 2.5rem;
+    }
+    .upload-zones-container {
+        grid-template-columns: 1fr;
     }
 }

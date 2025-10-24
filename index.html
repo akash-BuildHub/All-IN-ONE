@@ -41,17 +41,37 @@
             
             <main>
                 <div class="main-content">
-                    <div class="upload-zone" id="uploadZone">
-                        <input type="file" id="fileInput" class="upload-input" accept="image/*,.pdf,.doc,.docx,.txt">
-                        <div class="upload-content">
-                            <div class="upload-icon">
-                                <i class="fas fa-cloud-upload-alt"></i>
+                    <div class="upload-zones-container">
+                        <!-- Left upload zone for documents and images -->
+                        <div class="upload-zone left-upload-zone" id="uploadZone">
+                            <input type="file" id="fileInput" class="upload-input" accept="image/*,.pdf,.doc,.docx,.txt">
+                            <div class="upload-content">
+                                <div class="upload-icon">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div class="upload-text">
+                                    <h3>Drop your file here</h3>
+                                    <p>or click to browse</p>
+                                </div>
+                                <button class="browse-btn">Browse Files</button>
+                                <p class="file-support-text">Supports PDF, Word, text files, and images</p>
                             </div>
-                            <div class="upload-text">
-                                <h3>Drop your file here</h3>
-                                <p>or click to browse</p>
+                        </div>
+
+                        <!-- Right upload zone for audio files -->
+                        <div class="upload-zone right-upload-zone" id="audioUploadZone">
+                            <input type="file" id="audioFileInput" class="upload-input" accept="audio/*">
+                            <div class="upload-content">
+                                <div class="upload-icon">
+                                    <i class="fas fa-microphone-alt"></i>
+                                </div>
+                                <div class="upload-text">
+                                    <h3>Drop your file here</h3>
+                                    <p>or click to browse</p>
+                                </div>
+                                <button class="browse-btn">Browse Files</button>
+                                <p class="file-support-text">Supports audio files</p>
                             </div>
-                            <button class="browse-btn">Browse Files</button>
                         </div>
                     </div>
 
