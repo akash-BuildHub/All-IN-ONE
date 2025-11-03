@@ -147,71 +147,186 @@ async function handleAudioFile(file) {
     }, 2000);
 }
 
-// IMPROVED: Image Processing with Multiple OCR Methods
+// IMPROVED: Image Processing with Individual Content Extraction
 async function handleImageFile(file) {
     const reader = new FileReader();
     reader.onload = async (e) => {
         showImagePreview(e.target.result, 'Image', 'fas fa-image');
         
-        // Add the uploaded image to extracted images
-        addExtractedImage(e.target.result, file.name.split('.')[0]);
-        
         try {
             const img = new Image();
             img.onload = async () => {
-                let bestResult = '';
-                let bestConfidence = 0;
-
-                // Try multiple OCR methods
-                const methods = [
-                    { name: 'PSM_AUTO', psm: Tesseract.PSM.AUTO },
-                    { name: 'PSM_SINGLE_BLOCK', psm: Tesseract.PSM.SINGLE_BLOCK },
-                    { name: 'PSM_SINGLE_COLUMN', psm: Tesseract.PSM.SINGLE_COLUMN },
-                    { name: 'PSM_SINGLE_BLOCK_VERT_TEXT', psm: Tesseract.PSM.SINGLE_BLOCK_VERT_TEXT }
-                ];
-
-                for (let method of methods) {
-                    try {
-                        const canvas = createCanvasFromImage(img);
-                        const processedCanvas = enhanceImageForOCR(canvas);
-                        
-                        const { data: { text, confidence } } = await Tesseract.recognize(processedCanvas, 'eng', {
-                            logger: m => updateProgress(m),
-                            tessedit_pageseg_mode: method.psm,
-                            tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
-                            preserve_interword_spaces: '1'
-                        });
-
-                        if (confidence > bestConfidence && text.trim().length > bestResult.length) {
-                            bestResult = text;
-                            bestConfidence = confidence;
-                        }
-                    } catch (err) {
-                        console.log(`OCR method ${method.name} failed:`, err);
-                    }
+                // Extract individual content regions first
+                const contentRegions = await extractContentRegionsFromImage(img);
+                
+                // Add each extracted region as individual image
+                contentRegions.forEach((region, index) => {
+                    addExtractedImage(region.dataUrl, `${file.name.split('.')[0]}-region${index + 1}`);
+                });
+                
+                if (contentRegions.length > 1) {
+                    showToast(`Extracted ${contentRegions.length} content regions from image`, 'success');
                 }
+                
+                // Perform OCR on the entire image for complete text
+                const canvas = createCanvasFromImage(img);
+                const processedCanvas = enhanceImageForOCR(canvas);
+                
+                const { data: { text, confidence } } = await Tesseract.recognize(processedCanvas, 'eng', {
+                    logger: m => updateProgress(m),
+                    tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+                    tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+                    preserve_interword_spaces: '1'
+                });
 
-                // If no good result, try default method
-                if (!bestResult || bestConfidence < 50) {
-                    const canvas = createCanvasFromImage(img);
-                    const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
-                        logger: m => updateProgress(m)
-                    });
-                    bestResult = text;
-                }
-
-                showResult(cleanOCRText(bestResult), `Text extracted with ${Math.round(bestConfidence)}% confidence`);
+                showResult(preserveTextFormatting(text), `Text extracted with ${Math.round(confidence)}% confidence`);
             };
             img.src = e.target.result;
         } catch (err) {
-            console.error('OCR Error:', err);
-            showError('Failed to extract text from image');
+            console.error('Image processing error:', err);
+            showError('Failed to process image');
         }
     };
     reader.readAsDataURL(file);
 }
 
-// IMPROVED: PDF Processing with Better Text Preservation
+// NEW: Extract individual content regions from image
+async function extractContentRegionsFromImage(img) {
+    const regions = [];
+    const canvas = createCanvasFromImage(img);
+    const ctx = canvas.getContext('2d');
+    
+    // Detect content blocks using multiple methods
+    const contentBlocks = detectContentBlocks(canvas);
+    
+    // Extract each content block as individual image
+    contentBlocks.forEach((block, index) => {
+        if (block.width > 50 && block.height > 50) { // Minimum size threshold
+            const regionCanvas = document.createElement('canvas');
+            const regionCtx = regionCanvas.getContext('2d');
+            
+            regionCanvas.width = block.width;
+            regionCanvas.height = block.height;
+            
+            // Draw the specific region
+            regionCtx.drawImage(
+                canvas,
+                block.x, block.y, block.width, block.height,
+                0, 0, block.width, block.height
+            );
+            
+            regions.push({
+                dataUrl: regionCanvas.toDataURL('image/png'),
+                block: block
+            });
+        }
+    });
+    
+    return regions;
+}
+
+// NEW: Detect content blocks in image/PDF
+function detectContentBlocks(canvas) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    
+    const blocks = [];
+    const visited = new Set();
+    
+    // Scan for content regions
+    for (let y = 0; y < height; y += 3) {
+        for (let x = 0; x < width; x += 3) {
+            const pos = `${x},${y}`;
+            
+            if (!visited.has(pos)) {
+                const pixelIndex = (y * width + x) * 4;
+                const r = data[pixelIndex];
+                const g = data[pixelIndex + 1];
+                const b = data[pixelIndex + 2];
+                
+                // If pixel is not background (not near-white)
+                if (!isBackgroundColor(r, g, b)) {
+                    const block = floodFillBlock(imageData, x, y, visited);
+                    if (block && block.area > 100) { // Minimum area
+                        blocks.push(block);
+                    }
+                }
+            }
+        }
+    }
+    
+    return blocks;
+}
+
+// NEW: Flood fill to find connected content blocks
+function floodFillBlock(imageData, startX, startY, visited) {
+    const width = imageData.width;
+    const height = imageData.height;
+    const data = imageData.data;
+    const queue = [[startX, startY]];
+    
+    let minX = startX, maxX = startX, minY = startY, maxY = startY;
+    let area = 0;
+    
+    while (queue.length > 0) {
+        const [x, y] = queue.shift();
+        const pos = `${x},${y}`;
+        
+        if (visited.has(pos) || x < 0 || x >= width || y < 0 || y >= height) {
+            continue;
+        }
+        
+        const pixelIndex = (y * width + x) * 4;
+        const r = data[pixelIndex];
+        const g = data[pixelIndex + 1];
+        const b = data[pixelIndex + 2];
+        
+        if (isBackgroundColor(r, g, b)) {
+            continue;
+        }
+        
+        visited.add(pos);
+        area++;
+        
+        // Update bounding box
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+        
+        // Add neighbors (8-directional for better connectivity)
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                queue.push([x + dx, y + dy]);
+            }
+        }
+    }
+    
+    if (area < 50) return null;
+    
+    // Add padding and ensure within bounds
+    const padding = 5;
+    const block = {
+        x: Math.max(0, minX - padding),
+        y: Math.max(0, minY - padding),
+        width: Math.min(width, maxX - minX + 2 * padding + 1),
+        height: Math.min(height, maxY - minY + 2 * padding + 1),
+        area: area
+    };
+    
+    return block;
+}
+
+// NEW: Check if color is background (near-white)
+function isBackgroundColor(r, g, b) {
+    return r > 240 && g > 240 && b > 240;
+}
+
+// IMPROVED: PDF Processing with Individual Content Extraction
 async function handlePDFFile(file) {
     const fileReader = new FileReader();
     fileReader.onload = async function() {
@@ -219,11 +334,11 @@ async function handlePDFFile(file) {
             const typedArray = new Uint8Array(this.result);
             showPDFPreview(file);
             
-            // Extract images and text in parallel for better performance
-            await Promise.all([
-                extractPDFPagesAsImages(typedArray, file.name),
-                extractTextFromPDF(typedArray)
-            ]);
+            // Extract individual content regions from PDF pages
+            await extractContentFromPDFPages(typedArray, file.name);
+
+            // Extract text with exact formatting
+            await extractTextFromPDF(typedArray);
 
         } catch (err) {
             console.error('PDF processing error:', err);
@@ -233,7 +348,65 @@ async function handlePDFFile(file) {
     fileReader.readAsArrayBuffer(file);
 }
 
-// IMPROVED: PDF Text Extraction with Format Preservation
+// NEW: Extract individual content from PDF pages
+async function extractContentFromPDFPages(typedArray, filename) {
+    try {
+        const pdf = await pdfjsLib.getDocument(typedArray).promise;
+        let totalRegions = 0;
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2.5 }); // Higher scale for better quality
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise;
+
+            // Extract individual content regions from the page
+            const contentRegions = detectContentBlocks(canvas);
+            
+            // Extract each region as individual image
+            contentRegions.forEach((region, index) => {
+                const regionCanvas = document.createElement('canvas');
+                const regionCtx = regionCanvas.getContext('2d');
+                
+                regionCanvas.width = region.width;
+                regionCanvas.height = region.height;
+                
+                regionCtx.drawImage(
+                    canvas,
+                    region.x, region.y, region.width, region.height,
+                    0, 0, region.width, region.height
+                );
+                
+                addExtractedImage(regionCanvas.toDataURL('image/png'), `${filename}-p${pageNum}-region${index + 1}`);
+                totalRegions++;
+            });
+            
+            updateProgress({ 
+                progress: pageNum / pdf.numPages, 
+                status: `Extracting content from page ${pageNum}` 
+            });
+        }
+
+        if (totalRegions > 0) {
+            showToast(`Extracted ${totalRegions} content regions from PDF`, 'success');
+        } else {
+            showToast('No individual content regions found in PDF', 'info');
+        }
+    } catch (err) {
+        console.error('PDF content extraction error:', err);
+        showToast('Failed to extract content from PDF', 'error');
+    }
+}
+
+// IMPROVED: PDF Text Extraction with Exact Formatting Preservation
 async function extractTextFromPDF(typedArray) {
     try {
         const pdf = await pdfjsLib.getDocument(typedArray).promise;
@@ -243,86 +416,96 @@ async function extractTextFromPDF(typedArray) {
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
             
-            // Improved text reconstruction with line breaks
-            let pageText = '';
-            let lastY = null;
+            // Advanced text reconstruction with exact formatting
+            const pageText = reconstructTextWithExactFormatting(textContent.items);
+            extractedText += pageText;
             
-            textContent.items.forEach(item => {
-                const y = item.transform[5];
-                if (lastY !== null && Math.abs(y - lastY) > 5) {
-                    pageText += '\n';
-                }
-                pageText += item.str + ' ';
-                lastY = y;
-            });
-            
-            extractedText += `--- Page ${pageNum} ---\n${pageText.trim()}\n\n`;
             updateProgress({ 
                 progress: pageNum / pdf.numPages, 
                 status: `Extracting text from page ${pageNum}/${pdf.numPages}` 
             });
         }
 
-        const cleanedText = cleanExtractedText(extractedText);
-        
-        if (cleanedText.trim().length > 10) {
-            showResult(cleanedText, `Extracted text from ${pdf.numPages} page(s)`);
+        if (extractedText.trim().length > 10) {
+            showResult(extractedText, `Extracted text from ${pdf.numPages} page(s)`);
         } else {
-            // Fallback to OCR
-            showToast('Using OCR for better text extraction...', 'info');
-            await performOCROnPDFPages(typedArray);
+            // Fallback to OCR with individual region processing
+            showToast('Using advanced OCR for text extraction...', 'info');
+            await performAdvancedOCROnPDF(typedArray);
         }
     } catch (err) {
         console.error('PDF text extraction error:', err);
-        await performOCROnPDFPages(typedArray);
+        await performAdvancedOCROnPDF(typedArray);
     }
 }
 
-// IMPROVED: PDF Image Extraction - Higher Quality
-async function extractPDFPagesAsImages(typedArray, filename) {
-    try {
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 3.0 }); // Higher resolution for better quality
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-
-            await page.render({
-                canvasContext: ctx,
-                viewport: viewport
-            }).promise;
-
-            // Use higher quality image format
-            const imageData = canvas.toDataURL('image/png', 1.0);
-            addExtractedImage(imageData, `${filename}-page${pageNum}`);
-            
-            updateProgress({ 
-                progress: pageNum / pdf.numPages, 
-                status: `Extracting images from page ${pageNum}` 
-            });
+// NEW: Advanced text reconstruction with exact formatting
+function reconstructTextWithExactFormatting(textItems) {
+    if (!textItems || textItems.length === 0) return '';
+    
+    // Group by lines based on Y position
+    const lines = {};
+    
+    textItems.forEach(item => {
+        const y = Math.round(item.transform[5]); // Round to group nearby lines
+        if (!lines[y]) {
+            lines[y] = [];
         }
-
-        showToast(`Extracted ${pdf.numPages} page images from PDF`, 'success');
-    } catch (err) {
-        console.error('PDF image extraction error:', err);
-        showToast('Failed to extract images from PDF', 'error');
-    }
+        lines[y].push({
+            x: item.transform[4],
+            text: item.str,
+            width: item.width,
+            height: item.height
+        });
+    });
+    
+    // Sort lines from top to bottom
+    const sortedLines = Object.keys(lines)
+        .map(y => parseInt(y))
+        .sort((a, b) => b - a); // PDF coordinate system: higher Y is top
+    
+    let result = '';
+    
+    sortedLines.forEach(y => {
+        const lineItems = lines[y];
+        // Sort items from left to right
+        lineItems.sort((a, b) => a.x - b.x);
+        
+        let lineText = '';
+        let lastX = -Infinity;
+        
+        lineItems.forEach(item => {
+            // Calculate gap between items
+            const gap = item.x - lastX;
+            
+            // Preserve spacing: add spaces or tabs based on gap size
+            if (lastX !== -Infinity && gap > item.width * 0.5) {
+                if (gap > item.width * 2) {
+                    lineText += '    '; // Large gap = tab
+                } else {
+                    lineText += ' '; // Small gap = space
+                }
+            }
+            
+            lineText += item.text;
+            lastX = item.x + (item.text.length * (item.width / Math.max(item.text.length, 1)));
+        });
+        
+        result += lineText + '\n';
+    });
+    
+    return result + '\n';
 }
 
-// IMPROVED: OCR Fallback for PDF with Better Settings
-async function performOCROnPDFPages(typedArray) {
+// NEW: Advanced OCR for PDF with region-based processing
+async function performAdvancedOCROnPDF(typedArray) {
     try {
         const pdf = await pdfjsLib.getDocument(typedArray).promise;
         let ocrText = '';
 
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2.5 }); // Higher scale for better OCR
+            const viewport = page.getViewport({ scale: 3.0 }); // Very high scale for accuracy
             
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -334,22 +517,43 @@ async function performOCROnPDFPages(typedArray) {
                 viewport: viewport
             }).promise;
             
+            // Process with multiple OCR configurations for best results
             const processedCanvas = enhanceImageForOCR(canvas);
-            const { data: { text } } = await Tesseract.recognize(processedCanvas, 'eng', {
+            const { data: { text, confidence } } = await Tesseract.recognize(processedCanvas, 'eng', {
                 logger: m => updateProgress(m, pageNum, pdf.numPages),
                 tessedit_pageseg_mode: Tesseract.PSM.AUTO_OSD,
                 tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
-                preserve_interword_spaces: '1'
+                preserve_interword_spaces: '1',
+                tessedit_create_txt: '1'
             });
             
-            ocrText += `--- Page ${pageNum} (OCR) ---\n${cleanOCRText(text)}\n\n`;
+            ocrText += preserveTextFormatting(text);
         }
 
-        showResult(cleanExtractedText(ocrText), 'Text extracted using OCR');
+        showResult(ocrText, 'Text extracted using advanced OCR');
     } catch (err) {
-        console.error('PDF OCR error:', err);
+        console.error('Advanced PDF OCR error:', err);
         showError('Failed to perform OCR on PDF');
     }
+}
+
+// NEW: Preserve text formatting from OCR results
+function preserveTextFormatting(text) {
+    if (!text) return '';
+    
+    return text
+        // Preserve multiple spaces (they might be intentional)
+        .replace(/^ +/gm, '') // Remove leading spaces but preserve indentation
+        .replace(/ {2,}/g, '  ') // Preserve double spaces, reduce excessive ones
+        // Preserve line breaks and paragraphs
+        .replace(/\n{3,}/g, '\n\n') // Limit consecutive newlines but preserve paragraphs
+        // Preserve list items and bullet points
+        .replace(/^[•·\-*]\s+/gm, '• ') // Standardize bullet points
+        // Preserve numbered lists
+        .replace(/^(\d+)\.\s+/gm, '$1. ') // Preserve numbered lists
+        // Clean up but preserve structure
+        .replace(/([.,!?])([A-Za-z])/g, '$1 $2') // Space after punctuation
+        .trim();
 }
 
 // IMPROVED: DOCX Processing with Better Text Extraction
@@ -367,7 +571,7 @@ async function handleDOCXFile(file) {
                 arrayBuffer: e.target.result 
             });
             
-            const cleanedText = cleanExtractedText(result.value);
+            const cleanedText = preserveTextFormatting(result.value);
             showResult(cleanedText, 'Text extracted from DOCX');
         } catch (err) {
             console.error('DOCX processing error:', err);
@@ -662,33 +866,6 @@ function enhanceImageForOCR(canvas) {
     ctx.filter = 'none';
     
     return canvas;
-}
-
-// IMPROVED: Text Cleaning Functions
-function cleanOCRText(text) {
-    if (!text) return '';
-    
-    return text
-        // Preserve formatting but clean up excessive spaces
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/[ \t]{2,}/g, ' ')
-        // Fix common OCR errors but preserve structure
-        .replace(/([.,!?])([A-Za-z])/g, '$1 $2')
-        .replace(/\s+\./g, '.')
-        .replace(/\s+,/g, ',')
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
-        .trim();
-}
-
-function cleanExtractedText(text) {
-    if (!text) return '';
-    
-    return text
-        .replace(/\r\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/[ \t]{2,}/g, ' ')
-        .replace(/^\s+|\s+$/gm, '')
-        .trim();
 }
 
 function updateProgress(m, currentPage = 1, totalPages = 1) {
