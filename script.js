@@ -25,7 +25,11 @@ const elements = {
 
 // Global variables
 let currentFile = null;
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+// FIXED: PDF.js worker configuration
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+}
 
 // Event Listeners
 elements.visionSnapBtn.addEventListener('click', () => {
@@ -126,28 +130,40 @@ async function handleAudioFile(file) {
     }, 2000);
 }
 
-// IMPROVED: Image Processing with Advanced OCR
+// Image Processing
 async function handleImageFile(file) {
     const reader = new FileReader();
     reader.onload = async (e) => {
-        showImagePreview(e.target.result, 'Image', 'fas fa-image');
-        addExtractedImage(e.target.result, file.name.split('.')[0]);
+        const imageDataUrl = e.target.result;
+        showImagePreview(imageDataUrl, 'Image', 'fas fa-image');
+        
+        // Add the uploaded image to extracted images
+        addExtractedImage(imageDataUrl, file.name.split('.')[0]);
         
         try {
             const img = new Image();
             img.onload = async () => {
+                elements.processingState.style.display = 'flex';
+                elements.progressText.textContent = '0% - Processing image for OCR...';
+
                 let bestResult = '';
                 let bestConfidence = 0;
 
                 // Try multiple OCR methods
                 const methods = [
-                    { name: 'AUTO', psm: Tesseract.PSM.AUTO, config: { preserve_interword_spaces: '1' } },
-                    { name: 'SINGLE_BLOCK', psm: Tesseract.PSM.SINGLE_BLOCK, config: { preserve_interword_spaces: '1' } },
-                    { name: 'SINGLE_COLUMN', psm: Tesseract.PSM.SINGLE_COLUMN, config: { preserve_interword_spaces: '1' } }
+                    { 
+                        name: 'AUTO', 
+                        psm: Tesseract.PSM.AUTO, 
+                        config: { 
+                            preserve_interword_spaces: '1'
+                        } 
+                    }
                 ];
 
                 for (let method of methods) {
                     try {
+                        updateProgress({ status: `Processing image...` });
+                        
                         const canvas = createCanvasFromImage(img);
                         const processedCanvas = enhanceImageForOCR(canvas);
                         
@@ -158,18 +174,17 @@ async function handleImageFile(file) {
                             ...method.config
                         });
 
-                        if (confidence > bestConfidence) {
+                        if (confidence > bestConfidence && text.trim().length > 0) {
                             bestResult = text;
                             bestConfidence = confidence;
                         }
-                        if (confidence > 85) break;
                     } catch (err) {
-                        console.log(`OCR method ${method.name} failed:`, err);
+                        console.log(`OCR method failed:`, err);
                     }
                 }
 
                 // Fallback if no good result
-                if (!bestResult || bestConfidence < 30) {
+                if (!bestResult) {
                     const canvas = createCanvasFromImage(img);
                     const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
                         logger: m => updateProgress(m)
@@ -177,9 +192,10 @@ async function handleImageFile(file) {
                     bestResult = text;
                 }
 
-                showResult(cleanOCRTextWithFormatting(bestResult), `Text extracted (${Math.round(bestConfidence)}% confidence)`);
+                const cleanedText = cleanOCRTextWithFormatting(bestResult);
+                showResult(cleanedText, `Text extracted from image`);
             };
-            img.src = e.target.result;
+            img.src = imageDataUrl;
         } catch (err) {
             console.error('OCR Error:', err);
             showError('Failed to extract text from image');
@@ -188,88 +204,213 @@ async function handleImageFile(file) {
     reader.readAsDataURL(file);
 }
 
-// PDF Processing
+// FIXED: PDF Processing with better error handling
 async function handlePDFFile(file) {
+    console.log('Starting PDF processing...');
+    
+    // Check if PDF.js is available
+    if (typeof pdfjsLib === 'undefined') {
+        showError('PDF.js library not loaded. Please refresh the page.');
+        return;
+    }
+
     const fileReader = new FileReader();
+    
     fileReader.onload = async function() {
         try {
+            console.log('PDF file read successfully, size:', this.result.byteLength);
             const typedArray = new Uint8Array(this.result);
             showPDFPreview(file);
-            await Promise.all([
-                extractContentFromPDFPages(typedArray, file.name),
-                extractTextFromPDF(typedArray)
-            ]);
+            
+            // Process PDF
+            await processPDFFile(typedArray, file.name);
+            
         } catch (err) {
             console.error('PDF processing error:', err);
-            showError('Failed to process PDF file');
+            showError('Failed to process PDF file: ' + err.message);
         }
     };
+    
+    fileReader.onerror = function() {
+        console.error('FileReader error:', fileReader.error);
+        showError('Failed to read PDF file');
+    };
+    
     fileReader.readAsArrayBuffer(file);
 }
 
-// PDF Content Extraction
-async function extractContentFromPDFPages(typedArray, filename) {
+// NEW: Separate PDF processing function
+async function processPDFFile(typedArray, filename) {
     try {
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
+        console.log('Loading PDF document...');
+        
+        // Load the PDF document
+        const loadingTask = pdfjsLib.getDocument(typedArray);
+        const pdf = await loadingTask.promise;
+        
+        console.log('PDF loaded successfully, pages:', pdf.numPages);
+        
+        // Extract content and text in sequence to avoid overload
+        await extractContentFromPDFPages(pdf, filename);
+        await extractTextFromPDF(pdf);
+        
+    } catch (err) {
+        console.error('PDF processing error:', err);
+        
+        if (err.name === 'InvalidPDFException') {
+            showError('Invalid PDF file. The file may be corrupted.');
+        } else if (err.name === 'PasswordException') {
+            showError('PDF is password protected. Please remove the password and try again.');
+        } else {
+            showError('Failed to process PDF: ' + err.message);
+        }
+    }
+}
+
+// UPDATED: PDF Content Extraction
+async function extractContentFromPDFPages(pdf, filename) {
+    try {
         let totalRegions = 0;
+        const totalPages = pdf.numPages;
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2.5 });
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            try {
+                console.log(`Processing page ${pageNum} of ${totalPages}`);
+                updateProgress({ 
+                    progress: (pageNum / totalPages) * 100, 
+                    status: `Processing page ${pageNum} of ${totalPages}` 
+                });
 
-            await page.render({ canvasContext: ctx, viewport }).promise;
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 }); // Reduced scale for performance
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
 
-            const contentRegions = detectContentBlocks(canvas);
-            contentRegions.forEach((region, index) => {
-                if (region.width > 50 && region.height > 50) {
-                    const regionCanvas = document.createElement('canvas');
-                    const regionCtx = regionCanvas.getContext('2d');
-                    regionCanvas.width = region.width;
-                    regionCanvas.height = region.height;
-                    
-                    regionCtx.drawImage(canvas, region.x, region.y, region.width, region.height, 0, 0, region.width, region.height);
-                    addExtractedImage(regionCanvas.toDataURL('image/png'), `${filename}-p${pageNum}-region${index + 1}`);
-                    totalRegions++;
-                }
-            });
-            
-            updateProgress({ progress: pageNum / pdf.numPages, status: `Processing page ${pageNum}` });
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+
+                // Extract content regions
+                const contentRegions = detectContentBlocks(canvas);
+                contentRegions.forEach((region, index) => {
+                    if (region.width > 50 && region.height > 50) {
+                        const regionCanvas = document.createElement('canvas');
+                        const regionCtx = regionCanvas.getContext('2d');
+                        regionCanvas.width = region.width;
+                        regionCanvas.height = region.height;
+                        
+                        regionCtx.drawImage(
+                            canvas, 
+                            region.x, region.y, region.width, region.height,
+                            0, 0, region.width, region.height
+                        );
+                        
+                        addExtractedImage(regionCanvas.toDataURL('image/png'), `${filename}-page${pageNum}-region${index + 1}`);
+                        totalRegions++;
+                    }
+                });
+
+            } catch (pageErr) {
+                console.error(`Error processing page ${pageNum}:`, pageErr);
+                // Continue with next page even if one fails
+            }
         }
 
         if (totalRegions > 0) {
             showToast(`Extracted ${totalRegions} content regions from PDF`, 'success');
+        } else {
+            showToast('No individual content regions found in PDF', 'info');
         }
     } catch (err) {
         console.error('PDF content extraction error:', err);
+        throw err;
     }
 }
 
-// PDF Text Extraction
-async function extractTextFromPDF(typedArray) {
+// UPDATED: PDF Text Extraction
+async function extractTextFromPDF(pdf) {
     try {
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
         let extractedText = '';
+        const totalPages = pdf.numPages;
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const textContent = await page.getTextContent();
-            extractedText += reconstructTextWithExactFormatting(textContent.items);
-            updateProgress({ progress: pageNum / pdf.numPages, status: `Extracting text from page ${pageNum}` });
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            try {
+                updateProgress({ 
+                    progress: (pageNum / totalPages) * 100, 
+                    status: `Extracting text from page ${pageNum} of ${totalPages}` 
+                });
+
+                const page = await pdf.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                extractedText += reconstructTextWithExactFormatting(textContent.items);
+                
+            } catch (pageErr) {
+                console.error(`Error extracting text from page ${pageNum}:`, pageErr);
+                // Continue with next page even if one fails
+            }
         }
 
         if (extractedText.trim().length > 10) {
-            showResult(extractedText, `Extracted text from ${pdf.numPages} page(s)`);
+            showResult(extractedText, `Extracted text from ${totalPages} page(s)`);
         } else {
-            await performAdvancedOCROnPDF(typedArray);
+            // Fallback to OCR
+            showToast('Using OCR for text extraction...', 'info');
+            await performOCROnPDF(pdf);
         }
     } catch (err) {
         console.error('PDF text extraction error:', err);
-        await performAdvancedOCROnPDF(typedArray);
+        throw err;
+    }
+}
+
+// NEW: OCR fallback for PDF
+async function performOCROnPDF(pdf) {
+    try {
+        let ocrText = '';
+        const totalPages = pdf.numPages;
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            try {
+                updateProgress({ 
+                    progress: (pageNum / totalPages) * 100, 
+                    status: `OCR processing page ${pageNum} of ${totalPages}` 
+                });
+
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 }); // Reduced scale for performance
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+
+                const processedCanvas = enhanceImageForOCR(canvas);
+                const { data: { text } } = await Tesseract.recognize(processedCanvas, 'eng', {
+                    logger: m => updateProgress(m),
+                    tessedit_pageseg_mode: Tesseract.PSM.AUTO_OSD,
+                    preserve_interword_spaces: '1'
+                });
+                
+                ocrText += cleanOCRTextWithFormatting(text) + '\n\n';
+                
+            } catch (pageErr) {
+                console.error(`OCR failed for page ${pageNum}:`, pageErr);
+            }
+        }
+
+        showResult(ocrText, 'Text extracted using OCR');
+    } catch (err) {
+        console.error('PDF OCR error:', err);
+        showError('Failed to perform OCR on PDF');
     }
 }
 
@@ -345,8 +486,8 @@ function detectContentBlocks(canvas) {
     const blocks = [];
     const visited = new Set();
     
-    for (let y = 0; y < height; y += 3) {
-        for (let x = 0; x < width; x += 3) {
+    for (let y = 0; y < height; y += 5) { // Increased step for performance
+        for (let x = 0; x < width; x += 5) {
             const pos = `${x},${y}`;
             if (!visited.has(pos)) {
                 const idx = (y * width + x) * 4;
@@ -381,11 +522,8 @@ function floodFillBlock(imageData, startX, startY, visited) {
         minX = Math.min(minX, x); maxX = Math.max(maxX, x);
         minY = Math.min(minY, y); maxY = Math.max(maxY, y);
         
-        for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-                if (dx !== 0 || dy !== 0) queue.push([x + dx, y + dy]);
-            }
-        }
+        // 4-directional for better performance
+        queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
     if (area < 50) return null;
@@ -437,39 +575,6 @@ function reconstructTextWithExactFormatting(textItems) {
     return result + '\n';
 }
 
-async function performAdvancedOCROnPDF(typedArray) {
-    try {
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
-        let ocrText = '';
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 3.0 });
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            const processedCanvas = enhanceImageForOCR(canvas);
-            
-            const { data: { text } } = await Tesseract.recognize(processedCanvas, 'eng', {
-                logger: m => updateProgress(m, pageNum, pdf.numPages),
-                tessedit_pageseg_mode: Tesseract.PSM.AUTO_OSD,
-                preserve_interword_spaces: '1'
-            });
-            
-            ocrText += cleanOCRTextWithFormatting(text);
-        }
-
-        showResult(ocrText, 'Text extracted using advanced OCR');
-    } catch (err) {
-        console.error('Advanced PDF OCR error:', err);
-        showError('Failed to perform OCR on PDF');
-    }
-}
-
-// FIXED: Advanced OCR text cleaning that preserves formatting
 function cleanOCRTextWithFormatting(text) {
     if (!text || text.trim().length === 0) return 'No text detected.';
     
@@ -522,10 +627,14 @@ function addExtractedImage(dataUrl, filename = 'image') {
         max-width: 100%; max-height: 100%; object-fit: contain;
         transition: transform 0.3s ease;
     `;
+    img.onload = () => console.log('Image loaded successfully:', filename);
+    img.onerror = () => console.error('Failed to load image:', filename);
     img.onmouseenter = () => img.style.transform = 'scale(1.05)';
     img.onmouseleave = () => img.style.transform = 'scale(1)';
     img.addEventListener('click', () => viewImage(dataUrl));
     
+    imgContainer.appendChild(img);
+
     const fileName = document.createElement('div');
     fileName.textContent = filename.length > 20 ? filename.substring(0, 18) + '...' : filename;
     fileName.style.cssText = `
