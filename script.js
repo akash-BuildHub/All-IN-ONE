@@ -149,7 +149,6 @@ async function handleImageFile(file) {
                 let bestResult = '';
                 let bestConfidence = 0;
 
-                // Try multiple OCR methods
                 const methods = [
                     { 
                         name: 'AUTO', 
@@ -204,11 +203,10 @@ async function handleImageFile(file) {
     reader.readAsDataURL(file);
 }
 
-// FIXED: PDF Processing with better error handling
+// PDF Processing
 async function handlePDFFile(file) {
     console.log('Starting PDF processing...');
     
-    // Check if PDF.js is available
     if (typeof pdfjsLib === 'undefined') {
         showError('PDF.js library not loaded. Please refresh the page.');
         return;
@@ -239,18 +237,16 @@ async function handlePDFFile(file) {
     fileReader.readAsArrayBuffer(file);
 }
 
-// NEW: Separate PDF processing function
+// PDF processing function
 async function processPDFFile(typedArray, filename) {
     try {
         console.log('Loading PDF document...');
         
-        // Load the PDF document
         const loadingTask = pdfjsLib.getDocument(typedArray);
         const pdf = await loadingTask.promise;
         
         console.log('PDF loaded successfully, pages:', pdf.numPages);
         
-        // Extract content and text in sequence to avoid overload
         await extractContentFromPDFPages(pdf, filename);
         await extractTextFromPDF(pdf);
         
@@ -267,7 +263,7 @@ async function processPDFFile(typedArray, filename) {
     }
 }
 
-// UPDATED: PDF Content Extraction
+// PDF Content Extraction
 async function extractContentFromPDFPages(pdf, filename) {
     try {
         let totalRegions = 0;
@@ -282,7 +278,7 @@ async function extractContentFromPDFPages(pdf, filename) {
                 });
 
                 const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.5 }); // Reduced scale for performance
+                const viewport = page.getViewport({ scale: 1.5 });
                 
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
@@ -294,7 +290,6 @@ async function extractContentFromPDFPages(pdf, filename) {
                     viewport: viewport
                 }).promise;
 
-                // Extract content regions
                 const contentRegions = detectContentBlocks(canvas);
                 contentRegions.forEach((region, index) => {
                     if (region.width > 50 && region.height > 50) {
@@ -316,7 +311,6 @@ async function extractContentFromPDFPages(pdf, filename) {
 
             } catch (pageErr) {
                 console.error(`Error processing page ${pageNum}:`, pageErr);
-                // Continue with next page even if one fails
             }
         }
 
@@ -331,7 +325,7 @@ async function extractContentFromPDFPages(pdf, filename) {
     }
 }
 
-// UPDATED: PDF Text Extraction
+// PDF Text Extraction
 async function extractTextFromPDF(pdf) {
     try {
         let extractedText = '';
@@ -350,14 +344,12 @@ async function extractTextFromPDF(pdf) {
                 
             } catch (pageErr) {
                 console.error(`Error extracting text from page ${pageNum}:`, pageErr);
-                // Continue with next page even if one fails
             }
         }
 
         if (extractedText.trim().length > 10) {
             showResult(extractedText, `Extracted text from ${totalPages} page(s)`);
         } else {
-            // Fallback to OCR
             showToast('Using OCR for text extraction...', 'info');
             await performOCROnPDF(pdf);
         }
@@ -367,7 +359,7 @@ async function extractTextFromPDF(pdf) {
     }
 }
 
-// NEW: OCR fallback for PDF
+// OCR fallback for PDF
 async function performOCROnPDF(pdf) {
     try {
         let ocrText = '';
@@ -381,7 +373,7 @@ async function performOCROnPDF(pdf) {
                 });
 
                 const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.5 }); // Reduced scale for performance
+                const viewport = page.getViewport({ scale: 1.5 });
                 
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
@@ -486,7 +478,7 @@ function detectContentBlocks(canvas) {
     const blocks = [];
     const visited = new Set();
     
-    for (let y = 0; y < height; y += 5) { // Increased step for performance
+    for (let y = 0; y < height; y += 5) {
         for (let x = 0; x < width; x += 5) {
             const pos = `${x},${y}`;
             if (!visited.has(pos)) {
@@ -522,7 +514,6 @@ function floodFillBlock(imageData, startX, startY, visited) {
         minX = Math.min(minX, x); maxX = Math.max(maxX, x);
         minY = Math.min(minY, y); maxY = Math.max(maxY, y);
         
-        // 4-directional for better performance
         queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
@@ -596,23 +587,6 @@ function cleanOCRTextWithFormatting(text) {
 function addExtractedImage(dataUrl, filename = 'image') {
     const wrapper = document.createElement('div');
     wrapper.className = 'extracted-image-card';
-    wrapper.style.cssText = `
-        position: relative; width: 160px; height: 180px; border: 2px solid hsl(var(--border));
-        border-radius: 12px; overflow: hidden; background: hsl(var(--card)); display: flex;
-        flex-direction: column; transition: all 0.3s ease; cursor: pointer;
-    `;
-
-    wrapper.onmouseenter = () => {
-        wrapper.style.transform = 'translateY(-4px)';
-        wrapper.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
-        wrapper.style.borderColor = 'hsl(var(--primary))';
-    };
-    
-    wrapper.onmouseleave = () => {
-        wrapper.style.transform = 'translateY(0)';
-        wrapper.style.boxShadow = 'none';
-        wrapper.style.borderColor = 'hsl(var(--border))';
-    };
 
     const imgContainer = document.createElement('div');
     imgContainer.style.cssText = `

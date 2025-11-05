@@ -385,14 +385,16 @@ main {
     background-color: hsl(var(--secondary));
 }
 
+/* FIXED: Scrollable result containers */
 .result-content {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: 0.75rem;
     padding: 1.5rem;
     min-height: 12rem;
-    max-height: 24rem;
-    overflow-y: auto;
+    max-height: 400px;
+    overflow: auto;
+    width: 100%;
 }
 
 .result-text {
@@ -400,6 +402,8 @@ main {
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.875rem;
     line-height: 1.5;
+    min-width: min-content;
+    word-break: break-word;
 }
 
 .image-result-display {
@@ -409,60 +413,35 @@ main {
     margin-top: 2rem;
 }
 
-.extracted-images-container {
+/* FIXED: Scrollable image container */
+#imageResultContent {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    width: 100%;
 }
 
-.image-card {
-    border: 1px solid hsl(var(--border));
-    padding: 12px;
+.extracted-image-card {
+    position: relative;
+    width: 160px;
+    height: 180px;
+    border: 2px solid hsl(var(--border));
     border-radius: 12px;
-    text-align: center;
-    background-color: hsl(var(--card));
-    transition: all 0.3s ease;
-    max-width: 200px;
-}
-
-.image-card:hover {
-    transform: translateY(-2px);
-    border-color: hsl(var(--primary));
-}
-
-.image-card img {
-    max-width: 150px;
-    max-height: 150px;
-    display: block;
-    margin-bottom: 12px;
-    cursor: pointer;
-    border-radius: 8px;
-}
-
-.image-card-buttons {
+    overflow: hidden;
+    background: hsl(var(--card));
     display: flex;
-    gap: 8px;
-    justify-content: center;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
-.view-btn {
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-
-.download-btn {
-    background: hsl(var(--accent));
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.875rem;
+.extracted-image-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: hsl(var(--primary));
 }
 
 .modal {
@@ -535,5 +514,11 @@ main {
     }
     .upload-zones-container {
         grid-template-columns: 1fr;
+    }
+    .result-content {
+        max-height: 300px;
+    }
+    #imageResultContent {
+        max-height: 300px;
     }
 }
