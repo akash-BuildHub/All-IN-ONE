@@ -33,7 +33,7 @@ if (typeof pdfjsLib !== 'undefined') {
 
 // Event Listeners
 elements.visionSnapBtn.addEventListener('click', () => {
-    window.open('https://teachable-machine-two.vercel.app/', '_blank');
+    window.open('https://vision-snap-two.vercel.app/', '_blank');
 });
 
 elements.fileInput.addEventListener('change', handleFileSelect);
